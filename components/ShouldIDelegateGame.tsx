@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Clock, CheckCircle, XCircle, Trophy, Play, RotateCcw, Timer } from 'lucide-react';
 
 interface Scenario {
@@ -26,6 +26,8 @@ const ShouldIDelegateGame: React.FC = () => {
   const [score, setScore] = useState<number>(0);
   const [round, setRound] = useState<number>(1);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
 
   const scenarios: Scenario[] = [
     {
@@ -115,6 +117,28 @@ const ShouldIDelegateGame: React.FC = () => {
     };
   }, [timerActive, timeLeft, groupDecision]);
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (gameState === 'playing' && !showFeedback && groupDecision === null && timeLeft > 0) {
+        if (e.key === 'ArrowLeft' || e.key === '1') {
+          makeDecision(true); // Delegate to AI
+        } else if (e.key === 'ArrowRight' || e.key === '2') {
+          makeDecision(false); // Keep human
+        }
+      } else if (showFeedback && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        nextScenario();
+      } else if (gameState === 'finished' && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        resetGame();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState, showFeedback, groupDecision, timeLeft, currentScenario]);
+
   const startGame = (): void => {
     setGameState('playing');
     setCurrentScenario(0);
@@ -126,7 +150,7 @@ const ShouldIDelegateGame: React.FC = () => {
     setRound(1);
   };
 
-  const makeDecision = (decision: boolean): void => {
+  const makeDecision = useCallback((decision: boolean): void => {
     if (groupDecision !== null) return; // Already decided
     
     setGroupDecision(decision);
@@ -140,14 +164,14 @@ const ShouldIDelegateGame: React.FC = () => {
     setTimeout(() => {
       setShowFeedback(true);
     }, 500);
-  };
+  }, [groupDecision, scenarios, currentScenario, score]);
 
   const handleTimeUp = (): void => {
     setGameState('results');
     setShowFeedback(true);
   };
 
-  const nextScenario = (): void => {
+  const nextScenario = useCallback((): void => {
     if (currentScenario < scenarios.length - 1) {
       setCurrentScenario(currentScenario + 1);
       setTimeLeft(45);
@@ -160,7 +184,7 @@ const ShouldIDelegateGame: React.FC = () => {
     } else {
       setGameState('finished');
     }
-  };
+  }, [currentScenario, scenarios.length]);
 
   const resetGame = (): void => {
     setGameState('setup');
@@ -183,47 +207,117 @@ const ShouldIDelegateGame: React.FC = () => {
     return (timeLeft / 45) * 100;
   };
 
+  // Swipe detection for navigation
+  const handleTouchStart = (e: React.TouchEvent): void => {
+    setTouchEnd(null);
+    setTouchStart({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent): void => {
+    setTouchEnd({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    });
+  };
+
+  const handleTouchEnd = (): void => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = touchStart.y - touchEnd.y;
+    const isLeftSwipe = distanceX > 50 && Math.abs(distanceY) < 100;
+    const isRightSwipe = distanceX < -50 && Math.abs(distanceY) < 100;
+    const isDownSwipe = distanceY < -50 && Math.abs(distanceX) < 100;
+
+    if (gameState === 'playing' && showFeedback && isLeftSwipe) {
+      nextScenario();
+    } else if (gameState === 'finished' && isDownSwipe) {
+      resetGame();
+    } else if (isRightSwipe && currentScenario > 0 && !timerActive) {
+      // Could add previous scenario navigation if needed
+    }
+  };
+
   if (gameState === 'setup') {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 bg-white min-h-screen">
-        <div className="text-center">
-          <div className="bg-blue-500 text-white p-6 rounded-full w-20 h-20 md:w-24 md:h-24 flex items-center justify-center mx-auto mb-6">
-            <Users className="w-10 h-10 md:w-12 md:h-12" />
+      <main className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen" role="main">
+        <header className="text-center animate-fade-in">
+          <div className="card w-28 h-28 md:w-32 md:h-32 flex items-center justify-center mx-auto mb-8 animate-slide-in" style={{ animationDelay: '0.1s' }}>
+            <Users className="w-14 h-14 md:w-16 md:h-16 text-blue-600" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Should I Delegate This?</h1>
-          <p className="text-lg md:text-xl text-gray-600 mb-8">The AI Decision Game for School Leaders</p>
+          <h1 className="text-display text-4xl md:text-5xl mb-4 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-slide-in" style={{ animationDelay: '0.2s' }}>Should I Delegate This?</h1>
+          <p className="text-title text-xl md:text-2xl text-neutral-600 mb-12 animate-slide-in" style={{ animationDelay: '0.3s' }}>The AI Decision Experience for School Leaders</p>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6 mb-8 max-w-2xl mx-auto">
-            <h2 className="font-semibold text-blue-900 mb-4">How to Play:</h2>
-            <div className="text-left space-y-3">
-              <div className="flex items-center">
-                <Timer className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
-                <span className="text-sm md:text-base">Each scenario has 45 seconds to decide</span>
+          <div className="card-elevated p-8 md:p-10 mb-12 max-w-3xl mx-auto animate-slide-in" style={{ animationDelay: '0.4s' }}>
+            <h2 className="text-title text-2xl text-neutral-800 mb-6 text-center">How This Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Timer className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-title text-lg text-neutral-800 mb-1">Thoughtful Timing</h3>
+                  <p className="text-body text-neutral-600">Consider each scenario with your team</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Users className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
-                <span className="text-sm md:text-base">Discuss as a group and make your choice</span>
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-title text-lg text-neutral-800 mb-1">Collaborative Choice</h3>
+                  <p className="text-body text-neutral-600">Discuss and decide together</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Trophy className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
-                <span className="text-sm md:text-base">Earn points for good delegation decisions</span>
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Trophy className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-title text-lg text-neutral-800 mb-1">Build Understanding</h3>
+                  <p className="text-body text-neutral-600">Learn delegation principles</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
-                <span className="text-sm md:text-base">Learn from immediate feedback and fun examples</span>
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-title text-lg text-neutral-800 mb-1">Immediate Insights</h3>
+                  <p className="text-body text-neutral-600">Get expert feedback instantly</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6 max-w-lg mx-auto mb-8 animate-slide-in" style={{ animationDelay: '0.5s' }}>
+            <h3 className="text-title text-lg text-neutral-800 mb-4 text-center">Navigation Options</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-body text-neutral-600">Touch & Swipe</div>
+                <div className="text-xs text-neutral-500 mt-1">Natural iPad gestures</div>
+              </div>
+              <div className="text-center">
+                <div className="text-body text-neutral-600">Keyboard</div>
+                <div className="text-xs text-neutral-500 mt-1">← → or 1 2 keys</div>
               </div>
             </div>
           </div>
 
           <button
             onClick={startGame}
-            className="bg-blue-500 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg text-lg md:text-xl font-semibold hover:bg-blue-600 transition-colors flex items-center mx-auto game-button"
+            className="btn-primary text-white px-12 py-4 text-xl font-semibold flex items-center mx-auto touch-target btn-large animate-slide-in"
+            style={{ animationDelay: '0.6s' }}
+            aria-label="Start the AI delegation decision experience"
           >
-            <Play className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Start Game
+            <Play className="w-6 h-6 mr-3" />
+            Begin Experience
           </button>
-        </div>
-      </div>
+        </header>
+      </main>
     );
   }
 
@@ -232,31 +326,55 @@ const ShouldIDelegateGame: React.FC = () => {
     const percentage = Math.round((score / maxScore) * 100);
     
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 bg-white min-h-screen">
-        <div className="text-center">
-          <Trophy className="w-16 h-16 md:w-20 md:h-20 text-yellow-500 mx-auto mb-6" />
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Game Complete!</h1>
-          <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">{score} / {maxScore} points</div>
-          <div className="text-lg md:text-xl text-gray-600 mb-8">{percentage}% Delegation Accuracy</div>
+      <div className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen">
+        <div className="text-center animate-fade-in">
+          <div className="card w-24 h-24 md:w-28 md:h-28 flex items-center justify-center mx-auto mb-8 animate-slide-in">
+            <Trophy className="w-12 h-12 md:w-14 md:h-14 text-amber-500" />
+          </div>
+          <h1 className="text-display text-4xl md:text-5xl mb-6 text-neutral-800 animate-slide-in" style={{ animationDelay: '0.1s' }}>Experience Complete!</h1>
+          <div className="card-elevated p-8 mb-8 max-w-md mx-auto animate-slide-in" style={{ animationDelay: '0.2s' }}>
+            <div className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">{score}</div>
+            <div className="text-lg text-neutral-600 mb-1">out of {maxScore} points</div>
+            <div className="text-2xl font-semibold text-neutral-800">{percentage}% Accuracy</div>
+          </div>
           
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 md:p-6 mb-8 max-w-2xl mx-auto">
-            <h2 className="font-semibold text-green-900 mb-4">Key Delegation Principles:</h2>
-            <div className="text-left space-y-2 text-sm md:text-base">
-              <p>✅ <strong>Good for AI:</strong> Content generation, variations, drafts, formatting, research</p>
-              <p>✅ <strong>Keep Human:</strong> Student assessment, personal decisions, curriculum choices based on your context</p>
-              <p>✅ <strong>Remember:</strong> AI is a powerful tool, but professional judgment is irreplaceable</p>
+          <div className="card-elevated p-8 md:p-10 mb-12 max-w-4xl mx-auto animate-slide-in" style={{ animationDelay: '0.3s' }}>
+            <h2 className="text-title text-2xl text-neutral-800 mb-8 text-center">Key Delegation Insights</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-title text-lg text-neutral-800 mb-2">Ideal for AI</h3>
+                <p className="text-body text-neutral-600">Content generation, variations, drafts, formatting, and research tasks</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-title text-lg text-neutral-800 mb-2">Keep Human</h3>
+                <p className="text-body text-neutral-600">Student assessment, personal decisions, context-specific choices</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-title text-lg text-neutral-800 mb-2">Remember</h3>
+                <p className="text-body text-neutral-600">AI amplifies human judgment—it doesn&apos;t replace professional expertise</p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6 animate-slide-in" style={{ animationDelay: '0.4s' }}>
             <button
               onClick={resetGame}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors flex items-center mx-auto"
+              className="btn-primary text-white px-8 py-4 text-lg font-semibold flex items-center mx-auto touch-target"
+              aria-label="Start the experience again from the beginning"
             >
-              <RotateCcw className="w-5 h-5 mr-2" />
-              Play Again
+              <RotateCcw className="w-5 h-5 mr-3" />
+              Experience Again
             </button>
-            <p className="text-gray-500 text-sm md:text-base">Ready for the next workshop activity?</p>
+            <p className="text-body text-neutral-500">Ready for your next workshop activity?</p>
           </div>
         </div>
       </div>
@@ -267,102 +385,173 @@ const ShouldIDelegateGame: React.FC = () => {
   const isCorrect = groupDecision === scenario.shouldDelegate;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6 bg-white min-h-screen">
+    <main 
+      className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen landscape-split portrait-stack"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      role="main"
+      aria-live="polite"
+    >
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between mb-6 md:mb-8 space-y-4 md:space-y-0">
-        <div className="flex items-center">
-          <div className="bg-blue-500 text-white p-3 rounded-lg mr-4">
-            <Users className="w-6 h-6" />
+      <div className="card-elevated p-6 mb-8 animate-slide-in">
+        <div className="flex flex-col lg:flex-row items-center justify-between space-y-4 lg:space-y-0">
+          <div className="flex items-center">
+            <div className="card w-14 h-14 flex items-center justify-center mr-4">
+              <Users className="w-7 h-7 text-blue-600" />
+            </div>
+            <div className="text-center lg:text-left">
+              <h1 className="text-title text-2xl md:text-3xl text-neutral-800">Should I Delegate This?</h1>
+              <p className="text-body text-neutral-600">Round {round} • Scenario {currentScenario + 1} of {scenarios.length}</p>
+            </div>
           </div>
-          <div className="text-center md:text-left">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Should I Delegate This?</h1>
-            <p className="text-gray-600 text-sm md:text-base">Round {round} • Scenario {currentScenario + 1} of {scenarios.length}</p>
+          <div className="text-center lg:text-right">
+            <div className="card p-4">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{score}</div>
+              <div className="text-sm text-neutral-600">points</div>
+            </div>
           </div>
-        </div>
-        <div className="text-center md:text-right">
-          <div className="text-xl md:text-2xl font-bold text-blue-600">{score} points</div>
         </div>
       </div>
 
       {/* Timer */}
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-center justify-center mb-4">
-          <Clock className={`w-6 h-6 md:w-8 md:h-8 mr-3 ${getTimerColor()}`} />
-          <span className={`text-3xl md:text-4xl font-bold ${getTimerColor()}`}>{timeLeft}s</span>
+      <div className="card-elevated p-6 mb-8 animate-fade-in">
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center mb-4">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mr-4 ${
+              timeLeft > 30 ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 
+              timeLeft > 15 ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-red-400 to-rose-500'
+            }`}>
+              <Clock className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <div className={`text-4xl md:text-5xl font-bold ${
+                timeLeft > 30 ? 'text-green-600' : 
+                timeLeft > 15 ? 'text-amber-600' : 'text-red-600'
+              }`}>{timeLeft}</div>
+              <div className="text-sm text-neutral-600">seconds</div>
+            </div>
+          </div>
+          <div className="text-body text-neutral-600 mb-4">Take your time to discuss and decide</div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-3 md:h-4">
+        <div className="relative w-full bg-neutral-200 rounded-full h-4 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={45} aria-valuenow={timeLeft} aria-label={`${timeLeft} seconds remaining`}>
           <div 
-            className={`h-3 md:h-4 rounded-full timer-progress ${
-              timeLeft > 30 ? 'bg-green-500' : 
-              timeLeft > 15 ? 'bg-yellow-500' : 'bg-red-500'
-            }`}
+            className="progress-bar h-4 rounded-full transition-all duration-1000 ease-out"
             style={{ width: `${getTimerProgress()}%` }}
           ></div>
         </div>
       </div>
 
       {/* Scenario */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 md:p-6 mb-6 md:mb-8">
-        <div className="flex items-center mb-4">
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-            {scenario.category}
-          </span>
+      <div className="card-elevated p-8 md:p-10 mb-8 animate-slide-in">
+        <div className="flex items-center mb-6">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl">
+            <span className="text-sm font-medium">{scenario.category}</span>
+          </div>
         </div>
-        <p className="text-lg md:text-xl text-gray-800 leading-relaxed">{scenario.scenario}</p>
+        <div className="max-w-4xl">
+          <p id="scenario-description" className="text-body text-xl md:text-2xl text-neutral-700 leading-relaxed" role="main">{scenario.scenario}</p>
+        </div>
       </div>
 
       {/* Decision Buttons */}
       {!showFeedback && groupDecision === null && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8 animate-slide-in">
           <button
             onClick={() => makeDecision(true)}
             disabled={timeLeft === 0}
-            className="bg-green-500 text-white p-6 md:p-8 rounded-lg text-lg md:text-2xl font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-300 game-button"
+            className="btn-success text-white p-8 md:p-10 text-xl md:text-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed touch-target btn-large group relative overflow-hidden"
+            aria-label="Choose to delegate this task to AI assistant"
+            aria-describedby="scenario-description"
           >
-            ✅ DELEGATE to AI
+            <div className="flex items-center justify-center">
+              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm opacity-90">DELEGATE TO</div>
+                <div className="text-2xl font-bold">AI Assistant</div>
+              </div>
+            </div>
           </button>
           <button
             onClick={() => makeDecision(false)}
             disabled={timeLeft === 0}
-            className="bg-red-500 text-white p-6 md:p-8 rounded-lg text-lg md:text-2xl font-semibold hover:bg-red-600 transition-colors disabled:bg-gray-300 game-button"
+            className="btn-error text-white p-8 md:p-10 text-xl md:text-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed touch-target btn-large group relative overflow-hidden"
+            aria-label="Choose to keep this task with human experts"
+            aria-describedby="scenario-description"
           >
-            🙋 Keep HUMAN
+            <div className="flex items-center justify-center">
+              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm opacity-90">KEEP WITH</div>
+                <div className="text-2xl font-bold">Human Expert</div>
+              </div>
+            </div>
           </button>
         </div>
       )}
 
       {/* Decision Made */}
       {groupDecision !== null && !showFeedback && (
-        <div className="text-center mb-6 md:mb-8">
-          <div className={`text-2xl md:text-3xl font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-            You chose: {groupDecision ? 'DELEGATE to AI' : 'Keep HUMAN'}
+        <div className="card-elevated p-8 text-center mb-8 animate-fade-in">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+            isCorrect ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 'bg-gradient-to-br from-red-400 to-rose-500'
+          }`}>
+            {isCorrect ? <CheckCircle className="w-8 h-8 text-white" /> : <XCircle className="w-8 h-8 text-white" />}
           </div>
-          <div className="text-base md:text-lg text-gray-600 mt-2">Revealing results...</div>
+          <div className="text-title text-2xl md:text-3xl text-neutral-800 mb-2">
+            You chose: {groupDecision ? 'AI Assistant' : 'Human Expert'}
+          </div>
+          <div className="text-body text-neutral-600 animate-pulse">Preparing your feedback...</div>
         </div>
       )}
 
       {/* Feedback */}
       {showFeedback && (
-        <div className="space-y-6">
-          <div className={`border-l-4 p-4 md:p-6 rounded-lg ${
-            isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'
-          }`}>
-            <div className="flex items-center mb-4">
-              {isCorrect ? (
-                <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-600 mr-3" />
-              ) : (
-                <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-600 mr-3" />
-              )}
-              <h3 className="text-lg md:text-xl font-semibold">
-                {isCorrect ? 'Correct! +100 points' : 'Not quite right'}
-              </h3>
+        <div className="space-y-8 animate-slide-in">
+          <div className="card-elevated p-8 md:p-10">
+            <div className="flex items-center mb-6">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mr-4 ${
+                isCorrect ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 'bg-gradient-to-br from-red-400 to-rose-500'
+              }`}>
+                {isCorrect ? (
+                  <CheckCircle className="w-8 h-8 text-white" />
+                ) : (
+                  <XCircle className="w-8 h-8 text-white" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-title text-2xl md:text-3xl text-neutral-800">
+                  {isCorrect ? 'Excellent Choice!' : 'Learning Opportunity'}
+                </h3>
+                <p className={`text-lg ${
+                  isCorrect ? 'text-green-600' : 'text-amber-600'
+                }`}>
+                  {isCorrect ? '+100 points earned' : 'Consider this insight'}
+                </p>
+              </div>
             </div>
-            <p className="text-base md:text-lg mb-4">
-              {isCorrect ? scenario.feedback.correct : scenario.feedback.incorrect}
-            </p>
+            
+            <div className="bg-neutral-50 p-6 rounded-2xl mb-6">
+              <p className="text-body text-lg md:text-xl text-neutral-700 leading-relaxed">
+                {isCorrect ? scenario.feedback.correct : scenario.feedback.incorrect}
+              </p>
+            </div>
+            
             {!isCorrect && scenario.funnyWrong && (
-              <div className="bg-white p-4 rounded border-l-4 border-yellow-400">
-                <p className="text-gray-700 text-sm md:text-base">{scenario.funnyWrong}</p>
+              <div className="card p-6 border-l-4 border-amber-400">
+                <div className="flex items-start">
+                  <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
+                    <span className="text-lg">💭</span>
+                  </div>
+                  <div>
+                    <h4 className="text-title text-lg text-neutral-800 mb-2">What might happen instead?</h4>
+                    <p className="text-body text-neutral-700">{scenario.funnyWrong}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -370,14 +559,25 @@ const ShouldIDelegateGame: React.FC = () => {
           <div className="text-center">
             <button
               onClick={nextScenario}
-              className="bg-blue-500 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg text-lg md:text-xl font-semibold hover:bg-blue-600 transition-colors"
+              className="btn-primary text-white px-10 py-4 text-xl font-semibold touch-target"
+              aria-label={currentScenario < scenarios.length - 1 ? 'Continue to next scenario' : 'View final results and summary'}
             >
-              {currentScenario < scenarios.length - 1 ? 'Next Scenario →' : 'See Final Results'}
+              {currentScenario < scenarios.length - 1 ? (
+                <span className="flex items-center">
+                  Continue Journey
+                  <span className="ml-2 text-2xl">→</span>
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <Trophy className="w-5 h-5 mr-2" />
+                  View Results
+                </span>
+              )}
             </button>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };
 
