@@ -244,12 +244,16 @@ const ShouldIDelegateGame: React.FC = () => {
   if (gameState === 'setup') {
     return (
       <main className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen" role="main">
-        <header className="text-center animate-fade-in">
-          <div className="card w-28 h-28 md:w-32 md:h-32 flex items-center justify-center mx-auto mb-8 animate-slide-in" style={{ animationDelay: '0.1s' }}>
-            <Users className="w-14 h-14 md:w-16 md:h-16 text-blue-600" />
+        <div className="animate-fade-in">
+          <div className="flex items-start space-x-6 mb-12">
+            <div className="card w-20 h-20 flex items-center justify-center flex-shrink-0 animate-slide-in" style={{ animationDelay: '0.1s' }}>
+              <Users className="w-10 h-10 text-blue-600" />
+            </div>
+            <div className="text-left animate-slide-in" style={{ animationDelay: '0.2s' }}>
+              <h1 className="text-display text-4xl md:text-5xl mb-3 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">Should I Delegate This?</h1>
+              <p className="text-title text-xl md:text-2xl text-neutral-600">The AI Decision Experience for School Leaders</p>
+            </div>
           </div>
-          <h1 className="text-display text-4xl md:text-5xl mb-4 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-slide-in" style={{ animationDelay: '0.2s' }}>Should I Delegate This?</h1>
-          <p className="text-title text-xl md:text-2xl text-neutral-600 mb-12 animate-slide-in" style={{ animationDelay: '0.3s' }}>The AI Decision Experience for School Leaders</p>
           
           <div className="card-elevated p-8 md:p-10 mb-12 max-w-3xl mx-auto animate-slide-in" style={{ animationDelay: '0.4s' }}>
             <h2 className="text-title text-2xl text-neutral-800 mb-6 text-center">How This Works</h2>
@@ -293,30 +297,17 @@ const ShouldIDelegateGame: React.FC = () => {
             </div>
           </div>
 
-          <div className="card p-6 max-w-lg mx-auto mb-8 animate-slide-in" style={{ animationDelay: '0.5s' }}>
-            <h3 className="text-title text-lg text-neutral-800 mb-4 text-center">Navigation Options</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-body text-neutral-600">Touch & Swipe</div>
-                <div className="text-xs text-neutral-500 mt-1">Natural iPad gestures</div>
-              </div>
-              <div className="text-center">
-                <div className="text-body text-neutral-600">Keyboard</div>
-                <div className="text-xs text-neutral-500 mt-1">← → or 1 2 keys</div>
-              </div>
-            </div>
+          <div className="mt-8 animate-slide-in" style={{ animationDelay: '0.4s' }}>
+            <button
+              onClick={startGame}
+              className="btn-primary text-white px-8 py-3 text-lg font-semibold flex items-center touch-target"
+              aria-label="Start the AI delegation decision experience"
+            >
+              <Play className="w-5 h-5 mr-3" />
+              Begin Experience
+            </button>
           </div>
-
-          <button
-            onClick={startGame}
-            className="btn-primary text-white px-12 py-4 text-xl font-semibold flex items-center mx-auto touch-target btn-large animate-slide-in"
-            style={{ animationDelay: '0.6s' }}
-            aria-label="Start the AI delegation decision experience"
-          >
-            <Play className="w-6 h-6 mr-3" />
-            Begin Experience
-          </button>
-        </header>
+        </div>
       </main>
     );
   }
@@ -414,36 +405,8 @@ const ShouldIDelegateGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Timer */}
-      <div className="card-elevated p-6 mb-8 animate-fade-in">
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center mb-4">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mr-4 ${
-              timeLeft > 30 ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 
-              timeLeft > 15 ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-red-400 to-rose-500'
-            }`}>
-              <Clock className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <div className={`text-4xl md:text-5xl font-bold ${
-                timeLeft > 30 ? 'text-green-600' : 
-                timeLeft > 15 ? 'text-amber-600' : 'text-red-600'
-              }`}>{timeLeft}</div>
-              <div className="text-sm text-neutral-600">seconds</div>
-            </div>
-          </div>
-          <div className="text-body text-neutral-600 mb-4">Take your time to discuss and decide</div>
-        </div>
-        <div className="relative w-full bg-neutral-200 rounded-full h-4 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={45} aria-valuenow={timeLeft} aria-label={`${timeLeft} seconds remaining`}>
-          <div 
-            className="progress-bar h-4 rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${getTimerProgress()}%` }}
-          ></div>
-        </div>
-      </div>
-
       {/* Scenario */}
-      <div className="card-elevated p-8 md:p-10 mb-8 animate-slide-in">
+      <div className="card-elevated p-8 md:p-10 mb-6 animate-slide-in">
         <div className="flex items-center mb-6">
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl">
             <span className="text-sm font-medium">{scenario.category}</span>
@@ -451,6 +414,23 @@ const ShouldIDelegateGame: React.FC = () => {
         </div>
         <div className="max-w-4xl">
           <p id="scenario-description" className="text-body text-xl md:text-2xl text-neutral-700 leading-relaxed" role="main">{scenario.scenario}</p>
+        </div>
+      </div>
+
+      {/* Timer - Subtle */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center mb-3">
+          <Clock className="w-4 h-4 text-neutral-400 mr-2" />
+          <span className="text-sm text-neutral-500">{timeLeft}s remaining</span>
+        </div>
+        <div className="relative w-full bg-neutral-200 rounded-full h-2 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={45} aria-valuenow={timeLeft} aria-label={`${timeLeft} seconds remaining`}>
+          <div 
+            className="h-2 rounded-full transition-all duration-1000 ease-out ${
+              timeLeft > 30 ? 'bg-neutral-400' : 
+              timeLeft > 15 ? 'bg-amber-400' : 'bg-red-400'
+            }"
+            style={{ width: `${getTimerProgress()}%` }}
+          ></div>
         </div>
       </div>
 
