@@ -8,7 +8,7 @@ This is a React application containing an interactive educational game called "S
 
 ## Development Setup
 
-This project will be structured as a standard React application for Vercel deployment:
+This project is a Next.js application configured for static export and Vercel deployment:
 
 ```bash
 # Install dependencies
@@ -20,25 +20,29 @@ npm run dev
 # Build for production
 npm run build
 
-# Deploy to Vercel
-vercel --prod
+# Start production server
+npm run start
+
+# Run linter
+npm run lint
 ```
 
 ## Architecture
 
-- **React Application**: Modern React app using functional components and hooks
+- **Next.js 15.5.3**: App Router architecture with static export configuration
+- **React 18**: Modern React app using functional components and hooks
 - **Game State Machine**: Manages four distinct states: `setup`, `playing`, `results`, `finished`
 - **Timer System**: 45-second countdown per scenario with visual progress indicators
 - **Scoring System**: 100 points per correct decision with percentage-based final scoring
-- **Vercel Deployment**: Optimized for static site generation and edge deployment
+- **Static Export**: Configured for static site generation and edge deployment
 
-## Required Dependencies
+## Current Dependencies
 
-- **React 18+**: Core framework
-- **Next.js**: For optimal Vercel deployment and performance
-- **Tailwind CSS**: Utility-first styling
-- **lucide-react**: Icon library
-- **TypeScript**: Type safety (optional but recommended)
+- **React 18**: Core framework
+- **Next.js 15.5.3**: Full-stack React framework with app router
+- **Tailwind CSS 3.4.1**: Utility-first styling framework
+- **lucide-react 0.460.0**: Modern icon library
+- **TypeScript 5**: Full type safety implementation
 
 ## Core Game Mechanics
 
@@ -72,19 +76,28 @@ To modify game content:
 - Modify scoring system (currently 100 points per correct answer)
 - Update styling via Tailwind classes
 
-## File Structure (Target)
+## Current File Structure
 
 ```
 /
+├── app/
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
 ├── components/
 │   └── ShouldIDelegateGame.tsx
-├── pages/
-│   └── index.tsx
-├── styles/
-│   └── globals.css
-├── public/
+├── node_modules/
 ├── package.json
 ├── next.config.js
-├── tailwind.config.js
-└── vercel.json
+├── tailwind.config.ts
+├── postcss.config.js
+├── CLAUDE.md
+└── WARP.md
 ```
+
+## Deployment Configuration
+
+- **Static Export**: Configured in `next.config.js` with `output: 'export'`
+- **Trailing Slash**: Enabled for better static hosting compatibility
+- **Image Optimization**: Disabled for static export compatibility
+- **Vercel Ready**: Optimized for Vercel deployment with static generation
