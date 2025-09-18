@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React application containing an interactive educational game called "Should I Delegate This?" designed for school leaders and educators. The game helps users learn when to delegate tasks to AI versus when to keep them human-driven through timed decision-making scenarios. The goal is to develop this into a standalone React app hosted on Vercel.
+This is a React application containing an interactive educational game called "Should I Delegate This?" designed for school leaders and educators. The game helps users learn when to delegate tasks to AI versus when to keep them human-driven through timed decision-making scenarios.
+
+**Status**: Successfully deployed on Vercel as a static export application.
 
 ## Development Setup
 
@@ -63,9 +65,11 @@ npm run lint
 
 ## Deployment Configuration
 
-- **Vercel**: Primary hosting platform
-- **Static Export**: Configured for optimal performance
-- **Domain**: Will be accessible at custom domain or vercel.app subdomain
+- **Vercel**: Primary hosting platform using `@vercel/static-build`
+- **Static Export**: Configured in `next.config.js` with `output: 'export'`
+- **Build Output**: Static files generated in `out/` directory
+- **Vercel Config**: Uses `vercel.json` with static build configuration
+- **Domain**: Accessible at custom domain or vercel.app subdomain
 - **Build Optimization**: Tailwind purging and React production builds
 
 ## Content Modification
@@ -86,18 +90,54 @@ To modify game content:
 │   └── page.tsx
 ├── components/
 │   └── ShouldIDelegateGame.tsx
+├── out/                    # Generated static export directory
 ├── node_modules/
 ├── package.json
-├── next.config.js
+├── next.config.js         # Configured for static export
+├── vercel.json            # Static build configuration
 ├── tailwind.config.ts
 ├── postcss.config.js
-├── CLAUDE.md
-└── WARP.md
+├── tsconfig.json
+├── WARP.md
+└── CLAUDE.md
 ```
 
-## Deployment Configuration
+## Deployment Configuration Details
 
-- **Static Export**: Configured in `next.config.js` with `output: 'export'`
-- **Trailing Slash**: Enabled for better static hosting compatibility
-- **Image Optimization**: Disabled for static export compatibility
-- **Vercel Ready**: Optimized for Vercel deployment with static generation
+### next.config.js
+- **Static Export**: `output: 'export'` for static site generation
+- **Trailing Slash**: `trailingSlash: true` for better static hosting
+- **Skip Redirects**: `skipTrailingSlashRedirect: true` for static compatibility
+- **Images**: `unoptimized: true` for static export compatibility
+- **File Tracing**: `outputFileTracingRoot: __dirname` for proper workspace detection
+
+### vercel.json
+- **Build System**: Uses `@vercel/static-build` instead of Next.js runtime
+- **Output Directory**: `distDir: "out"` points to static export directory
+- **Version**: Uses Vercel v2 build configuration
+
+### Deployment Process
+1. Vercel detects `vercel.json` and uses static build configuration
+2. Runs `npm run build` which generates static files in `out/`
+3. Serves static files directly without Next.js server-side features
+4. Avoids `routes-manifest.json` requirement by bypassing Next.js runtime
+
+## Troubleshooting Deployment
+
+### Common Issues Resolved
+- **routes-manifest.json not found**: Fixed by using `@vercel/static-build` instead of Next.js runtime
+- **Server-side features**: All components are client-side only with no server dependencies
+- **Image optimization**: Disabled with `unoptimized: true` for static export compatibility
+- **Workspace warnings**: Resolved with `outputFileTracingRoot: __dirname`
+
+### Key Success Factors
+1. **Static Export Configuration**: `output: 'export'` in `next.config.js`
+2. **Vercel Static Build**: Using `@vercel/static-build` in `vercel.json`
+3. **No Server Dependencies**: Pure client-side React application
+4. **Build Verification**: Always test `npm run build` locally before deployment
+
+### If Deployment Fails
+1. Verify `out/` directory is generated after `npm run build`
+2. Check that `vercel.json` uses `@vercel/static-build`
+3. Ensure no server-side Next.js features are used in components
+4. Confirm `next.config.js` has proper static export settings
